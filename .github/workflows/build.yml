@@ -9,35 +9,46 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: 1. Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: 2. Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Flutter
+      - name: 3. Setup Flutter Stable
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: Prepare Clean Project
+      - name: 4. Fix Android v2 Embedding & Clean Project
         run: |
+          # Remove obsolete v1 android folder and tests
+          rm -rf android test
           mkdir -p assets
           touch assets/.gitkeep
-          rm -f android/app/build.gradle.kts android/build.gradle.kts android/settings.gradle.kts || true
-          rm -rf test || true
+
+          # Generate modern Flutter v2 Embedding Android files
           flutter create . --org com.nextunit --platforms=android --project-name nextunit_docuscan_app --no-pub
-          rm -rf test || true
+          rm -rf test
           mkdir -p assets
+
+          # Write local.properties for Gradle
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "flutter.buildMode=debug" >> android/local.properties
+          echo "flutter.versionName=1.0.0" >> android/local.properties
+          echo "flutter.versionCode=1" >> android/local.properties
+
+          # Get dependencies
           flutter pub get
 
-      - name: Build Debug APK
+      - name: 5. Build Debug APK
         run: flutter build apk --debug --no-tree-shake-icons
 
-      - name: Upload APK Artifact
+      - name: 6. Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: NextUnit-DocuScan-Debug-APK
