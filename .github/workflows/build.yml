@@ -33,10 +33,12 @@ jobs:
       - name: 4. Configure Modern Flutter & Android Structure
         run: |
           flutter config --no-analytics
-          # Clean any conflicting kotlin script gradle files
+          # Clean any conflicting kotlin script gradle files and dummy tests
           rm -f android/app/build.gradle.kts android/build.gradle.kts android/settings.gradle.kts || true
+          rm -rf test || true
           # Create or repair clean Android project structure
           flutter create . --org com.nextunit --platforms=android --project-name nextunit_docuscan_app
+          rm -rf test || true
           flutter pub get
 
       - name: 5. Ensure Hardware Permissions & Android v2 Embedding
