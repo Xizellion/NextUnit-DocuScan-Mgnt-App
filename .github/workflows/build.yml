@@ -1,0 +1,58 @@
+name: Build NextUnit DocuScan APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Build Android APKs (Release & Debug)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: 2. Set up Java JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: 3. Set up Flutter SDK (Stable Channel)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 4. Disable Analytics & Verify Flutter Doctor
+        run: |
+          flutter config --no-analytics
+          flutter doctor -v
+
+      - name: 5. Fetch Project Dependencies (flutter pub get)
+        run: flutter pub get
+
+      - name: 6. Build Android Release APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: 7. Build Android Debug APK
+        run: flutter build apk --debug --no-tree-shake-icons
+
+      - name: 8. Stage APK Outputs for Artifact Download
+        run: |
+          mkdir -p apk_dist
+          cp build/app/outputs/flutter-apk/app-release.apk apk_dist/NextUnit-DocuScan-Release.apk || true
+          cp build/app/outputs/flutter-apk/app-debug.apk apk_dist/NextUnit-DocuScan-Debug.apk || true
+
+      - name: 9. Upload APKs as Downloadable Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextUnit-DocuScan-APKs
+          path: apk_dist/*.apk
+          retention-days: 30
+          if-no-files-found: error
