@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Checkout Code
+      - name: 1. Checkout
         uses: actions/checkout@v4
 
       - name: 2. Setup Java 17
@@ -24,25 +24,14 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: 4. Fix Android v2 Embedding & Clean Project
+      - name: 4. Migrate to Flutter v2 Embedding
         run: |
-          # Remove obsolete v1 android folder and tests
-          rm -rf android test
+          rm -rf android test build
           mkdir -p assets
           touch assets/.gitkeep
-
-          # Generate modern Flutter v2 Embedding Android files
           flutter create . --org com.nextunit --platforms=android --project-name nextunit_docuscan_app --no-pub
           rm -rf test
           mkdir -p assets
-
-          # Write local.properties for Gradle
-          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
-          echo "flutter.buildMode=debug" >> android/local.properties
-          echo "flutter.versionName=1.0.0" >> android/local.properties
-          echo "flutter.versionCode=1" >> android/local.properties
-
-          # Get dependencies
           flutter pub get
 
       - name: 5. Build Debug APK
