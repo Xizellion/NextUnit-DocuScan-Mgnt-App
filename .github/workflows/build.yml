@@ -23,17 +23,16 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: 3. Set up Flutter SDK (3.22.x LTS)
+      - name: 3. Set up Flutter SDK (Stable Channel)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
           channel: 'stable'
           cache: true
 
       - name: 4. Configure Modern Flutter & Android Structure
         run: |
           flutter config --no-analytics
-          # Clean any conflicting kotlin script gradle files and dummy tests
+          # Clean any conflicting kotlin script gradle files and test folders
           rm -f android/app/build.gradle.kts android/build.gradle.kts android/settings.gradle.kts || true
           rm -rf test || true
           # Create or repair clean Android project structure
@@ -41,8 +40,13 @@ jobs:
           rm -rf test || true
           flutter pub get
 
-      - name: 5. Ensure Hardware Permissions & Android v2 Embedding
+      - name: 5. Ensure SDK 35 & Hardware Permissions
         run: |
+          GRADLE="android/app/build.gradle"
+          if [ -f "$GRADLE" ]; then
+            sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/g' "$GRADLE" || true
+            sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/g' "$GRADLE" || true
+          fi
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if [ -f "$MANIFEST" ]; then
             if ! grep -q "flutterEmbedding" "$MANIFEST"; then
