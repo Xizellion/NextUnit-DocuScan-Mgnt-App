@@ -18,7 +18,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 3. Setup Android SDK 36 Platform
+      - name: 3. Setup Android SDK 36
         uses: android-actions/setup-android@v3
         with:
           packages: 'platforms;android-36 build-tools;36.0.0'
@@ -29,19 +29,16 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: 5. Prepare Clean Android & Force SDK 36 on ALL Plugins
+      - name: 5. Prepare Project & Force SDK 36
         run: |
-          # 1. Remove old configurations
           rm -rf android test build
           mkdir -p assets
           touch assets/.gitkeep
 
-          # 2. Re-create clean Android project structure
           flutter create . --org com.nextunit --platforms=android --project-name nextunit_docuscan_app --no-pub
           rm -rf test
           mkdir -p assets
 
-          # 3. Force compileSdk 36 on ALL subprojects (file_picker, camera, etc.)
           cat << 'EOF' >> android/build.gradle
 
           subprojects {
@@ -60,7 +57,6 @@ jobs:
           }
           EOF
 
-          # 4. Patch App level build.gradle
           if [ -f "android/app/build.gradle" ]; then
             sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 36/g' android/app/build.gradle || true
             sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/g' android/app/build.gradle || true
@@ -69,14 +65,17 @@ jobs:
             sed -i '/defaultConfig {/a \        multiDexEnabled true' android/app/build.gradle || true
           fi
 
-          # 5. Fetch dependencies
           flutter pub get
+          flutter build bundle
 
-      - name: 6. Build Debug APK
-        run: flutter build apk --debug --no-tree-shake-icons
+      - name: 6. Direct Gradle Native Build
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
-      - name: 7. Upload APK Artifact
+      - name: 7. Find & Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: NextUnit-DocuScan-Debug-APK
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/**/*.apk
