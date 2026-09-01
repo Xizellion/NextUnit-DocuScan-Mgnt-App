@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Checkout
+      - name: 1. Checkout Code
         uses: actions/checkout@v4
 
       - name: 2. Setup Java 17
@@ -18,26 +18,64 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 3. Setup Flutter Stable
+      - name: 3. Setup Android SDK 36 Platform
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0'
+
+      - name: 4. Setup Flutter Stable
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: 4. Migrate to Flutter v2 Embedding
+      - name: 5. Prepare Clean Android & Force SDK 36 on ALL Plugins
         run: |
+          # 1. Remove old configurations
           rm -rf android test build
           mkdir -p assets
           touch assets/.gitkeep
+
+          # 2. Re-create clean Android project structure
           flutter create . --org com.nextunit --platforms=android --project-name nextunit_docuscan_app --no-pub
           rm -rf test
           mkdir -p assets
+
+          # 3. Force compileSdk 36 on ALL subprojects (file_picker, camera, etc.)
+          cat << 'EOF' >> android/build.gradle
+
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 36
+                          if (project.android.hasProperty('defaultConfig')) {
+                              project.android.defaultConfig {
+                                  targetSdkVersion 36
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
+
+          # 4. Patch App level build.gradle
+          if [ -f "android/app/build.gradle" ]; then
+            sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 36/g' android/app/build.gradle || true
+            sed -i 's/compileSdk = [0-9]\+/compileSdk = 36/g' android/app/build.gradle || true
+            sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 36/g' android/app/build.gradle || true
+            sed -i 's/targetSdk = [0-9]\+/targetSdk = 36/g' android/app/build.gradle || true
+            sed -i '/defaultConfig {/a \        multiDexEnabled true' android/app/build.gradle || true
+          fi
+
+          # 5. Fetch dependencies
           flutter pub get
 
-      - name: 5. Build Debug APK
+      - name: 6. Build Debug APK
         run: flutter build apk --debug --no-tree-shake-icons
 
-      - name: 6. Upload APK Artifact
+      - name: 7. Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: NextUnit-DocuScan-Debug-APK
