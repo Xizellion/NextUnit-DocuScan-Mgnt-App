@@ -23,28 +23,29 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: 3. Set up Flutter SDK (Stable Channel)
+      - name: 3. Set up Flutter SDK (3.22.x LTS)
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.22.2'
           channel: 'stable'
           cache: true
 
-      - name: 4. Configure Modern Flutter & Android v2 Embedding
+      - name: 4. Configure Modern Flutter & Android Structure
         run: |
           flutter config --no-analytics
-          # Automatically rebuild clean Android v2 embedding structure to eliminate v1 embedding error
+          # Clean any conflicting kotlin script gradle files
+          rm -f android/app/build.gradle.kts android/build.gradle.kts android/settings.gradle.kts || true
+          # Create or repair clean Android project structure
           flutter create . --org com.nextunit --platforms=android --project-name nextunit_docuscan_app
           flutter pub get
 
-      - name: 5. Ensure Camera, Audio & Storage Permissions in AndroidManifest.xml
+      - name: 5. Ensure Hardware Permissions & Android v2 Embedding
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if [ -f "$MANIFEST" ]; then
-            # Ensure v2 embedding meta-data tag exists
             if ! grep -q "flutterEmbedding" "$MANIFEST"; then
               sed -i '/<\/application>/i \        <meta-data android:name="flutterEmbedding" android:value="2" />' "$MANIFEST"
             fi
-            # Add required camera, mic, storage and internet permissions if not already present
             if ! grep -q "android.permission.CAMERA" "$MANIFEST"; then
               sed -i '/<manifest/a \    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
             fi
