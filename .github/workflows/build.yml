@@ -78,4 +78,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NextUnit-DocuScan-Debug-APK
-          path: build/app/outputs/**/*.apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            build/app/outputs/flutter-apk/*.apk
